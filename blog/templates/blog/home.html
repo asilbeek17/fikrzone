@@ -1,0 +1,108 @@
+{% extends 'blog/base.html' %}
+{% load static %}
+
+{% block title %}Fikrzone — Fikrzone{% endblock %}
+
+{% block content %}
+<div class="ed-home">
+
+  <!-- Hero -->
+  <header class="ed-hero">
+    <div class="ed-hero__eyebrow">Fikrzone</div>
+    <h1 class="ed-hero__title">
+      <span class="ed-highlight">Shaxsiy</span> fikrlar va <span class="ed-highlight">ilhom</span> manbalari.
+    </h1>
+    <p class="ed-hero__sub">
+      Uzoq o'ylangan fikrlar, shaxsiy mulohazalar va e'tibor bilan aytilgan so'zlar uchun joy.
+      Algoritmsiz. Shoshilmasdan. Faqat yozish.
+    </p>
+    <div class="ed-hero__cta">
+      {% if user.is_staff %}
+      <a href="{% url 'blog:editor_create' %}" class="ed-btn ed-btn--primary">
+        <i class="bi bi-pen me-1"></i> Maqola yozish
+      </a>
+      {% endif %}
+      <a href="{% url 'blog:search' %}" class="ed-btn ed-btn--ghost">
+        <i class="bi bi-search me-1"></i> Qidirish
+      </a>
+    </div>
+    <div class="ed-hero__stats">
+      <div class="ed-stat-pill">
+        <span class="ed-stat-pill__num">{{ page_obj.paginator.count }}</span>
+        <span class="ed-stat-pill__label">Chop etilgan</span>
+      </div>
+      <div class="ed-stat-pill">
+        <span class="ed-stat-pill__num">{{ all_tags.count }}</span>
+        <span class="ed-stat-pill__label">Teglar</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Teglar -->
+  {% if all_tags %}
+  <div class="ed-tags-strip">
+    {% for tag in all_tags %}
+    <a href="{{ tag.get_absolute_url }}" class="ed-tag-pill">#{{ tag.name }}<sup>{{ tag.pub_count }}</sup></a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Bo'luvchi -->
+  <div class="ed-section-divider"><span>Oxirgi maqolalar</span></div>
+
+  <!-- Maqolalar -->
+  {% if page_obj %}
+  <div class="ed-post-grid">
+    {% for post in page_obj %}
+    <article class="ed-card{% if forloop.first %} ed-card--featured{% endif %}">
+      <span class="ed-card__num">#{{ post.id }}</span>
+
+      {% if post.cover_url %}
+      <a href="{{ post.get_absolute_url }}" class="ed-card__cover-wrap">
+        <img src="{{ post.cover_url }}" alt="{{ post.title }}" class="ed-card__cover" loading="lazy" />
+      </a>
+      {% else %}
+      <a href="{{ post.get_absolute_url }}" class="ed-card__cover-placeholder">
+        <i class="bi bi-journal-text"></i>
+      </a>
+      {% endif %}
+
+      <div class="ed-card__body">
+        <div class="ed-card__meta">
+          <time datetime="{{ post.created_at|date:'Y-m-d' }}">{{ post.created_at|date:"d.m.Y" }}</time>
+          {% for tag in post.tags.all %}
+          <a href="{{ tag.get_absolute_url }}" class="ed-card__tag">#{{ tag.name }}</a>
+          {% endfor %}
+        </div>
+        <h2 class="ed-card__title">
+          <a href="{{ post.get_absolute_url }}">{{ post.title }}</a>
+        </h2>
+        {% if post.excerpt %}
+        <p class="ed-card__excerpt">{{ post.excerpt|truncatechars:150 }}</p>
+        {% endif %}
+        <div class="ed-card__footer">
+          <a href="{{ post.get_absolute_url }}" class="ed-card__read-more">
+            O'qish <i class="bi bi-arrow-right"></i>
+          </a>
+          <div class="ed-card__reactions-preview">
+            {% with summary=post.reaction_summary %}
+              {% for emoji, count in summary.items %}
+              <span>{{ emoji }}{{ count }}</span>
+              {% endfor %}
+            {% endwith %}
+          </div>
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="ed-empty">
+    <i class="bi bi-journal-text"></i>
+    <p>Hali maqola yo'q.{% if user.is_staff %} <a href="{% url 'blog:editor_create' %}">Birinchisini yozing →</a>{% endif %}</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

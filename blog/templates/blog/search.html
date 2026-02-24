@@ -1,0 +1,55 @@
+{% extends 'blog/base.html' %}
+
+{% block content %}
+<div class="ed-home">
+  <header style="margin-bottom:2rem;">
+    <p class="ed-hero__eyebrow">Qidirish</p>
+    <h1 class="ed-article__title">Maqola qidirish</h1>
+  </header>
+
+  <form action="{% url 'blog:search' %}" method="get" class="ed-search-page-form">
+    <div class="ed-search-page-wrap">
+      <input type="text" name="q" value="{{ q }}" placeholder="Qidirish by title, tag, or content…" class="ed-input ed-search-page-input" autofocus />
+      <button type="submit" class="ed-btn ed-btn--primary">
+        <i class="bi bi-search me-1"></i> Qidirish
+      </button>
+    </div>
+  </form>
+
+  {% if q %}
+  <div class="ed-section-divider" style="margin-top:2.5rem;">
+    <span>{% if results %}{{ results|length }} ta natija{% else %}Natija yo'q{% endif %} "{{ q }}" uchun</span>
+  </div>
+
+  {% if results %}
+  <div class="ed-post-grid">
+    {% for post in results %}
+    <article class="ed-card">
+      {% if post.cover_image %}
+      <a href="{{ post.get_absolute_url }}" class="ed-card__cover-wrap">
+        <img src="{{ post.cover_image.url }}" alt="{{ post.title }}" class="ed-card__cover" loading="lazy" />
+      </a>
+      {% endif %}
+      <div class="ed-card__body">
+        <div class="ed-card__meta">
+          <time>{{ post.created_at|date:"F j, Y" }}</time>
+          {% for tag in post.tags.all %}<a href="{{ tag.get_absolute_url }}" class="ed-card__tag">#{{ tag.name }}</a>{% endfor %}
+        </div>
+        <h2 class="ed-card__title"><a href="{{ post.get_absolute_url }}">{{ post.title }}</a></h2>
+        {% if post.excerpt %}<p class="ed-card__excerpt">{{ post.excerpt|truncatechars:140 }}</p>{% endif %}
+        <div class="ed-card__footer">
+          <a href="{{ post.get_absolute_url }}" class="ed-card__read-more">O'qish <i class="bi bi-arrow-right"></i></a>
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="ed-empty">
+    <i class="bi bi-search"></i>
+    <p>Hech narsa topilmadi. Boshqa so'z bilan qidiring.</p>
+  </div>
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

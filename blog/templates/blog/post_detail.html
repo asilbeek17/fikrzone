@@ -1,0 +1,298 @@
+{% extends 'blog/base.html' %}
+{% load static %}
+
+{% block title %}{{ post.meta_title }} — Fikrzone{% endblock %}
+
+{% block reading_progress %}
+<div class="ed-reading-progress">
+  <div class="ed-reading-progress__bar" id="readingBar"></div>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* ── Block rendering styles ─────────────────────────────────────────── */
+  .ed-blocks { margin: 2.5rem 0; }
+
+  /* Text block */
+  .ed-block-text {
+    font-family: var(--font-body);
+    font-size: 1.05rem;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 1.85;
+    color: var(--text-body);
+    margin-bottom: 1.5rem;
+  }
+  .ed-block-text * { font-style: normal; }
+  .ed-block-text em, .ed-block-text i { font-style: italic; }
+  .ed-block-text p { margin: 0 0 0.85rem 0; color: var(--text-body); font-size: 1.05rem; line-height: 1.75; }
+  /* Shrink empty Quill paragraphs to a small natural breath */
+  .ed-block-text p:empty { margin: 0; height: 0.5rem; }
+  .ed-block-text p > br:only-child { line-height: 0.5; }
+  .ed-block-text h2,.ed-block-text h3,.ed-block-text h4 {
+    font-family: var(--font-display); font-weight: 800; font-style: normal;
+    color: var(--text-heading); letter-spacing: -0.03em; line-height: 1.15; margin: 2rem 0 0.85rem;
+  }
+  .ed-block-text h2 { font-size: 1.85rem; border-bottom: 2px solid var(--border); padding-bottom: 0.4rem; }
+  .ed-block-text h3 { font-size: 1.45rem; }
+  .ed-block-text h4 { font-size: 1.15rem; }
+  .ed-block-text a  { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+  .ed-block-text blockquote {
+    margin: 1.5rem 0; padding: 1.25rem 1.5rem;
+    background: var(--accent-soft); border-radius: var(--radius-lg);
+    border: 1px solid var(--accent-mid);
+  }
+  .ed-block-text blockquote p { color: var(--text-heading); font-weight: 500; margin: 0; }
+  .ed-block-text pre { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; overflow-x: auto; font-family: var(--font-mono); font-size: .875rem; line-height: 1.65; margin: 1rem 0; }
+  .ed-block-text code { font-family: var(--font-mono); font-size: .875em; background: var(--surface-alt); border: 1px solid var(--border); padding: .15em .45em; border-radius: 4px; color: var(--accent-2); }
+  .ed-block-text pre code { background: none; border: none; padding: 0; color: var(--text-body); }
+  .ed-block-text ul,.ed-block-text ol { padding-left: 1.75rem; margin-bottom: 1.25rem; }
+  .ed-block-text li { margin-bottom: .35rem; color: var(--text-body); }
+  .ed-block-text img { border-radius: var(--radius-lg); margin: 1.5rem 0; border: 1px solid var(--border); max-width: 100%; }
+  .ed-block-text figure.image { margin: 1.5rem auto; text-align: center; }
+  .ed-block-text figure.image figcaption { font-size: .8rem; color: var(--text-muted); margin-top: .5rem; font-family: var(--font-mono); }
+
+  /* Image block */
+  .ed-block-image { margin: 2.5rem 0; }
+  .ed-block-image--full  { width: 100%; }
+  .ed-block-image--wide  { width: 80%; margin-left: auto; margin-right: auto; }
+  .ed-block-image--center{ width: 60%; margin-left: auto; margin-right: auto; }
+  .ed-block-image--left  { float: left; width: 45%; margin: 0.5rem 2rem 1rem 0; }
+  .ed-block-image--right { float: right; width: 45%; margin: 0.5rem 0 1rem 2rem; }
+  .ed-block-image img { width: 100%; border-radius: var(--radius-lg); border: 1px solid var(--border); display: block; }
+  .ed-block-caption { font-family: var(--font-mono); font-size: .78rem; color: var(--text-muted); margin-top: .6rem; text-align: center; }
+  .ed-block-clearfix { clear: both; }
+
+  /* Video block */
+  .ed-block-video { margin: 2.5rem 0; }
+  .ed-block-video video { width: 100%; border-radius: var(--radius-lg); border: 1px solid var(--border); display: block; }
+
+  /* Audio block */
+  .ed-block-audio {
+    margin: 2rem 0; padding: 1.5rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    display: flex; flex-direction: column; gap: .75rem;
+  }
+  .ed-block-audio audio { width: 100%; }
+  .ed-block-audio .ed-block-caption { text-align: left; margin: 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<article class="ed-article">
+
+  <header class="ed-article__header">
+    <div class="ed-article__tags">
+      {% for tag in post.tags.all %}
+      <a href="{{ tag.get_absolute_url }}" class="ed-tag-pill">#{{ tag.name }}</a>
+      {% endfor %}
+    </div>
+    <h1 class="ed-article__title">{{ post.title }}</h1>
+    {% if post.excerpt %}
+    <div class="ed-article__excerpt">{{ post.excerpt }}</div>
+    {% endif %}
+    <div class="ed-article__byline">
+      <i class="bi bi-calendar3"></i>
+      <time datetime="{{ post.created_at|date:'Y-m-d' }}">{{ post.created_at|date:"F j, Y" }}</time>
+      <span style="color:var(--border-strong)">·</span>
+      <i class="bi bi-clock"></i>
+      <span class="ed-view-count">
+  <i class="bi bi-eye"></i>
+  {% if post.view_count == 0 %}
+    Hali hech kim o'qimagan — birinchi bo'l!
+  {% elif post.view_count == 1 %}
+    1 kishi o'qidi
+  {% else %}
+    {{ post.view_count }} kishi o'qidi
+  {% endif %}
+</span>
+      <span style="color:var(--border-strong)">·</span>
+      <i class="bi bi-grid-3x3-gap"></i>
+      <span>{{ blocks.count }} ta blok</span>
+      {% if request.user.is_staff %}
+      <a href="{% url 'blog:editor_edit' post.slug %}" class="ed-article__edit-link ms-2">
+        <i class="bi bi-pencil-square"></i> Tahrirlash
+      </a>
+      {% endif %}
+    </div>
+    {% if post.status == 'draft' and user.is_staff %}
+    <div class="ed-draft-banner mt-3">
+      <i class="bi bi-exclamation-triangle me-2"></i>Bu <strong>qoralama</strong> — faqat admin ko'ra oladi.
+    </div>
+    {% endif %}
+  </header>
+
+  {% if post.cover_url %}
+  <div class="ed-article__cover">
+    <img src="{{ post.cover_url }}" alt="{{ post.title }}" />
+  </div>
+  {% endif %}
+
+  <!-- ── Content blocks ───────────────────────────────────────────────── -->
+  <div class="ed-blocks" id="articleBody">
+    {% for block in blocks %}
+
+      {% if block.block_type == 'text' %}
+      <div class="ed-block-text ck-content">
+        {{ block.text_content|safe }}
+      </div>
+
+      {% elif block.block_type == 'image' %}
+      {% if block.image %}
+      <figure class="ed-block-image ed-block-image--{{ block.image_layout|default:'full' }}">
+        <img src="{{ block.image.url }}" alt="{{ block.caption }}" loading="lazy" />
+        {% if block.caption %}<figcaption class="ed-block-caption">{{ block.caption }}</figcaption>{% endif %}
+      </figure>
+      <div class="ed-block-clearfix"></div>
+      {% endif %}
+
+      {% elif block.block_type == 'video' %}
+      {% if block.video %}
+      <div class="ed-block-video">
+        <video src="{{ block.video.url }}" controls preload="metadata">
+          Your browser does not support the video element.
+        </video>
+        {% if block.caption %}<p class="ed-block-caption">{{ block.caption }}</p>{% endif %}
+      </div>
+      {% endif %}
+
+      {% elif block.block_type == 'audio' %}
+      {% if block.audio %}
+      <div class="ed-block-audio">
+        <audio src="{{ block.audio.url }}" controls preload="metadata">
+          Your browser does not support the audio element.
+        </audio>
+        {% if block.caption %}<p class="ed-block-caption">{{ block.caption }}</p>{% endif %}
+      </div>
+      {% endif %}
+
+      {% endif %}
+    {% empty %}
+    <p style="color:var(--text-muted);font-style:italic;padding:2rem 0;">Hali kontent yo'q.</p>
+    {% endfor %}
+  </div>
+
+  <!-- Reactions -->
+  <div class="ed-reactions" id="reactions" data-post-slug="{{ post.slug }}">
+    <p class="ed-reactions__label">Bu sizga qanday ta'sir qildi?</p>
+    <div class="ed-reactions__row">
+      {% for r in reaction_data %}
+      <button class="ed-reaction-btn{% if r.active %} active{% endif %}" data-emoji="{{ r.emoji }}" title="{{ r.label }}">
+        <span class="ed-reaction-btn__emoji">{{ r.emoji }}</span>
+        <span class="ed-reaction-btn__count">{% if r.count > 0 %}{{ r.count }}{% endif %}</span>
+      </button>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Related -->
+  {% if related %}
+  <section class="ed-related">
+    <div class="ed-section-divider"><span>O'xshash maqolalar</span></div>
+    <div class="ed-related__grid">
+      {% for rp in related %}
+      <a href="{{ rp.get_absolute_url }}" class="ed-related__card">
+        {% if rp.cover_image %}<img src="{{ rp.cover_image.url }}" alt="{{ rp.title }}" class="ed-related__img" loading="lazy" />{% endif %}
+        <div class="ed-related__info">
+          <time>{{ rp.created_at|date:"M j, Y" }}</time>
+          <h4>{{ rp.title }}</h4>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- Izohs -->
+  <section class="ed-comments" id="comments">
+    <div class="ed-section-divider"><span>{{ comments.count }} ta izoh</span></div>
+    {% if comments %}
+    <div class="ed-comments__list">
+      {% for comment in comments %}
+      <div class="ed-comment">
+        <div class="ed-comment__avatar">{{ comment.name|first|upper }}</div>
+        <div class="ed-comment__body">
+          <div class="ed-comment__meta">
+            <strong>{{ comment.name }}</strong>
+            <time>{{ comment.created_at|date:"F j, Y" }}</time>
+          </div>
+          <p>{{ comment.body }}</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="ed-comments__empty">Birinchi bo'lib izoh qoldiring.</p>
+    {% endif %}
+    <div class="ed-comment-form">
+      <h3 class="ed-comment-form__title">Izoh qoldirish</h3>
+      <form action="{% url 'blog:add_comment' post.slug %}" method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="ed-label" for="commentName">Ismingiz</label>
+          <input type="text" id="commentName" name="name" class="ed-input" placeholder="masalan: Ali" required />
+        </div>
+        <div class="mb-4">
+          <label class="ed-label" for="commentBody">Izoh</label>
+          <textarea id="commentBody" name="body" class="ed-input ed-textarea" rows="4" placeholder="Fikringizni baham ko'ring…" required></textarea>
+        </div>
+        <button type="submit" class="ed-btn ed-btn--primary">Izoh yuborish <i class="bi bi-send ms-1"></i></button>
+      </form>
+    </div>
+  </section>
+
+</article>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Reading progress
+(function() {
+  const bar = document.getElementById('readingBar');
+  const body = document.getElementById('articleBody');
+  if (!bar || !body) return;
+  function upd() {
+    const rect = body.getBoundingClientRect();
+    const pct = Math.min(100, Math.max(0, (-rect.top / (rect.height - window.innerHeight)) * 100));
+    bar.style.width = pct + '%';
+  }
+  window.addEventListener('scroll', upd, { passive: true });
+  upd();
+})();
+
+// Reactions
+(function() {
+  const c = document.getElementById('reactions');
+  if (!c) return;
+  const slug = c.dataset.postSlug;
+  const csrf = '{{ csrf_token }}';
+  c.querySelectorAll('.ed-reaction-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      try {
+        const res  = await fetch(`/${slug}/react/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrf },
+          body: `emoji=${encodeURIComponent(btn.dataset.emoji)}`,
+        });
+        const data = await res.json();
+        // Update counts + active state
+        const row = c.querySelector('.ed-reactions__row');
+        const btns = [...row.querySelectorAll('.ed-reaction-btn')];
+        btns.forEach(b => {
+          b.classList.toggle('active', data.active_emoji === b.dataset.emoji);
+          const el = b.querySelector('.ed-reaction-btn__count');
+          const n  = data.counts[b.dataset.emoji] || 0;
+          el.textContent = n > 0 ? n : '';
+          b._count = n;
+        });
+        // Re-sort: highest count first, ties keep original order
+        btns.sort((a, b) => b._count - a._count);
+        btns.forEach(b => row.appendChild(b));
+      } catch(e) { console.error(e); }
+    });
+  });
+})();
+</script>
+{% endblock %}

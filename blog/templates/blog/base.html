@@ -1,0 +1,151 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="uz" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}{{ seo_title|default:"Fikrzone" }}{% endblock %}</title>
+  <meta name="description" content="{{ seo_description|default:'Shaxsiy blog.' }}" />
+  {% if seo_keywords %}<meta name="keywords" content="{{ seo_keywords }}" />{% endif %}
+  <meta property="og:title"       content="{{ seo_title|default:'Fikrzone' }}" />
+  <meta property="og:description" content="{{ seo_description|default:'Shaxsiy blog.' }}" />
+  <meta property="og:type" content="website" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{% static 'blog/css/style.css' %}" />
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="{% static 'blog/img/favicon.svg' %}">
+  <link rel="alternate icon" href="{% static 'blog/img/favicon.ico' %}">
+  <link rel="apple-touch-icon" href="{% static 'blog/img/apple-touch-icon.png' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+{% block reading_progress %}{% endblock %}
+
+<nav class="ed-navbar" id="edNavbar">
+  <div class="ed-navbar__inner">
+    <div class="d-flex align-items-center gap-3">
+      <button class="ed-sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+        <i class="bi bi-layout-sidebar-reverse"></i>
+      </button>
+      <a href="{% url 'blog:home' %}" class="ed-brand">
+        <svg width="28" height="28" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+          <rect width="100" height="100" rx="24" fill="#0c0c0c"/>
+          <circle cx="50" cy="40" r="25" stroke="white" stroke-width="2.5" fill="none"/>
+          <ellipse cx="50" cy="40" rx="25" ry="9.5" stroke="white" stroke-width="1.3" fill="none" opacity="0.5"/>
+          <line x1="25" y1="40" x2="75" y2="40" stroke="white" stroke-width="1.3" opacity="0.5"/>
+          <path d="M50 15 Q57 27 57 40 Q57 53 50 65" stroke="white" stroke-width="1.3" fill="none" opacity="0.5"/>
+          <path d="M50 15 Q43 27 43 40 Q43 53 50 65" stroke="white" stroke-width="1.3" fill="none" opacity="0.5"/>
+          <path d="M50 62 Q37 60 26 64 L26 78 Q37 74 50 76 Z" fill="white" opacity="0.92"/>
+          <path d="M50 62 Q63 60 74 64 L74 78 Q63 74 50 76 Z" fill="white" opacity="0.92"/>
+          <line x1="50" y1="62" x2="50" y2="76" stroke="#0c0c0c" stroke-width="2"/>
+        </svg>
+        Fikrzone<span class="ed-brand__dot"></span>
+      </a>
+    </div>
+
+    <div class="ed-navbar__actions">
+      <form action="{% url 'blog:search' %}" method="get" class="ed-search-form">
+        <div class="ed-search-wrap">
+          <input type="text" name="q" value="{{ q|default:'' }}" placeholder="Qidirish…" class="ed-search-input" autocomplete="off" />
+          <button type="submit" class="ed-search-btn"><i class="bi bi-search"></i></button>
+        </div>
+      </form>
+
+      {% if user.is_staff %}
+        <a href="{% url 'blog:editor_create' %}" class="ed-btn-write">
+          <i class="bi bi-pen"></i><span class="d-none d-md-inline">Yozish</span>
+        </a>
+        <a href="{% url 'blog:logout' %}" class="ed-btn-icon" title="Chiqish">
+          <i class="bi bi-box-arrow-right"></i>
+        </a>
+      {% else %}
+      {% endif %}
+
+      <button class="ed-theme-toggle" id="themeToggle" title="Mavzu almashtirish">
+        <i class="bi bi-moon-stars" id="themeIcon"></i>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="ed-layout" id="edLayout">
+  <aside class="ed-sidebar" id="edSidebar">
+    <div class="ed-sidebar__inner">
+      <p class="ed-sidebar__label">Maqolalar</p>
+      <div class="ed-sidebar__stats">
+        <div class="ed-sidebar__stat">
+          <span class="ed-sidebar__stat-num">{{ sidebar_posts.count }}</span>
+          <span class="ed-sidebar__stat-label">Jami</span>
+        </div>
+        <div class="ed-sidebar__stat">
+          <span class="ed-sidebar__stat-num" id="pubCount">—</span>
+          <span class="ed-sidebar__stat-label">Chop etilgan</span>
+        </div>
+      </div>
+      <ul class="ed-post-list" id="sidebarPostList">
+        {% for p in sidebar_posts %}
+        {% if p.status == 'published' or user.is_staff %}
+        <li class="ed-post-list__item{% if request.resolver_match.kwargs.slug == p.slug %} active{% endif %}">
+          <a href="{{ p.get_absolute_url }}" class="ed-post-list__link">
+            <span class="ed-post-list__id">#{{ p.id }}</span>
+            <span class="ed-post-list__title">{{ p.title|truncatechars:44 }}</span>
+            {% if p.status == 'draft' and user.is_staff %}<span class="ed-post-list__draft">qoralama</span>{% endif %}
+          </a>
+        </li>
+        {% endif %}
+        {% empty %}
+        <li class="ed-post-list__empty">Hali maqola yo'q.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </aside>
+
+  <main class="ed-main" id="edMain">
+    {% if messages %}
+    <div class="ed-messages">
+      {% for message in messages %}
+      <div class="ed-message ed-message--{{ message.tags }}">
+        <span>{{ message }}</span>
+        <button class="ed-message__close" onclick="this.parentElement.remove()">×</button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+
+<footer class="ed-footer" id="edFooter">
+  <div class="ed-footer__inner">
+    <a href="{% url 'blog:home' %}" class="ed-brand ed-brand--sm">
+      <svg width="22" height="22" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+        <rect width="100" height="100" rx="24" fill="#0c0c0c"/>
+        <circle cx="50" cy="40" r="25" stroke="white" stroke-width="2.5" fill="none"/>
+        <ellipse cx="50" cy="40" rx="25" ry="9.5" stroke="white" stroke-width="1.3" fill="none" opacity="0.5"/>
+        <line x1="25" y1="40" x2="75" y2="40" stroke="white" stroke-width="1.3" opacity="0.5"/>
+        <path d="M50 15 Q57 27 57 40 Q57 53 50 65" stroke="white" stroke-width="1.3" fill="none" opacity="0.5"/>
+        <path d="M50 15 Q43 27 43 40 Q43 53 50 65" stroke="white" stroke-width="1.3" fill="none" opacity="0.5"/>
+        <path d="M50 62 Q37 60 26 64 L26 78 Q37 74 50 76 Z" fill="white" opacity="0.92"/>
+        <path d="M50 62 Q63 60 74 64 L74 78 Q63 74 50 76 Z" fill="white" opacity="0.92"/>
+        <line x1="50" y1="62" x2="50" y2="76" stroke="#0c0c0c" stroke-width="2"/>
+      </svg>
+      Fikrzone<span class="ed-brand__dot"></span>
+    </a>
+    <span class="ed-footer__sep">—</span>
+    <span>Fikrlar, mulohazalar va hayot haqida.</span>
+    <div class="ms-auto d-flex gap-3 flex-wrap">
+      <a href="{% url 'blog:home' %}">Bosh sahifa</a>
+      <a href="{% url 'blog:search' %}">Qidirish</a>
+      {% if user.is_staff %}<a href="{% url 'blog:editor_create' %}">Yozish</a>{% endif %}
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{% static 'blog/js/main.js' %}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

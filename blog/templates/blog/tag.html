@@ -1,0 +1,54 @@
+{% extends 'blog/base.html' %}
+
+{% block content %}
+<div class="ed-home">
+  <header class="ed-tag-header">
+    <p class="ed-hero__eyebrow">Teg</p>
+    <h1 class="ed-article__title">#{{ tag.name }}</h1>
+    <p style="color:var(--text-muted);">{{ page_obj.paginator.count }} ta maqola</p>
+  </header>
+
+  {% if all_tags %}
+  <div class="ed-tags-strip" style="margin-bottom:2.5rem;">
+    {% for t in all_tags %}
+    <a href="{{ t.get_absolute_url }}" class="ed-tag-pill{% if t.slug == tag.slug %} active{% endif %}">#{{ t.name }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if page_obj %}
+  <div class="ed-post-grid">
+    {% for post in page_obj %}
+    <article class="ed-card">
+      {% if post.cover_image %}
+      <a href="{{ post.get_absolute_url }}" class="ed-card__cover-wrap">
+        <img src="{{ post.cover_image.url }}" alt="{{ post.title }}" class="ed-card__cover" loading="lazy" />
+      </a>
+      {% endif %}
+      <div class="ed-card__body">
+        <div class="ed-card__meta">
+          <time>{{ post.created_at|date:"F j, Y" }}</time>
+          {% for t in post.tags.all %}<a href="{{ t.get_absolute_url }}" class="ed-card__tag">#{{ t.name }}</a>{% endfor %}
+        </div>
+        <h2 class="ed-card__title"><a href="{{ post.get_absolute_url }}">{{ post.title }}</a></h2>
+        {% if post.excerpt %}<p class="ed-card__excerpt">{{ post.excerpt|truncatechars:140 }}</p>{% endif %}
+        <div class="ed-card__footer">
+          <a href="{{ post.get_absolute_url }}" class="ed-card__read-more">O'qish <i class="bi bi-arrow-right"></i></a>
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+
+  {% if page_obj.has_other_pages %}
+  <nav class="ed-pagination">
+    {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}" class="ed-page-btn"><i class="bi bi-arrow-left"></i> Oldingi</a>{% endif %}
+    <span class="ed-page-info">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}" class="ed-page-btn">Keyingi <i class="bi bi-arrow-right"></i></a>{% endif %}
+  </nav>
+  {% endif %}
+  {% else %}
+  <div class="ed-empty"><i class="bi bi-journal-text"></i><p>Bu tegda hali maqola yo'q.</p></div>
+  {% endif %}
+</div>
+{% endblock %}
