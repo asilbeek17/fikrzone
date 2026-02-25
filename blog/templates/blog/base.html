@@ -62,6 +62,9 @@
           <i class="bi bi-box-arrow-right"></i>
         </a>
       {% else %}
+        <a href="{% url 'blog:login' %}" class="ed-btn-login" title="Admin kirish">
+          <i class="bi bi-person"></i>
+        </a>
       {% endif %}
 
       <button class="ed-theme-toggle" id="themeToggle" title="Mavzu almashtirish">
@@ -147,5 +150,204 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="{% static 'blog/js/main.js' %}"></script>
 {% block extra_js %}{% endblock %}
+
+
+<!-- ── Fikrbot ──────────────────────────────────────────────────────────── -->
+<style>
+#fb-wrap{position:fixed;bottom:1.5rem;right:1.5rem;z-index:99999;font-family:var(--font-body);}
+#fb-btn{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));border:none;cursor:pointer;color:white;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px rgba(79,70,229,.45);transition:transform .2s;position:relative;}
+#fb-btn:hover{transform:scale(1.1);}
+#fb-pulse{position:absolute;top:2px;right:2px;width:12px;height:12px;border-radius:50%;background:#22c55e;border:2px solid white;animation:fbp 2s infinite;}
+@keyframes fbp{0%,100%{transform:scale(1)}50%{transform:scale(1.35)}}
+#fb-win{position:absolute;bottom:68px;right:0;width:340px;background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:0 16px 48px rgba(0,0,0,.18);flex-direction:column;overflow:hidden;display:none;}
+#fb-win.fb-open{display:flex;}
+.fb-hd{display:flex;align-items:center;justify-content:space-between;padding:.9rem 1rem;background:linear-gradient(135deg,var(--accent),var(--accent-2));}
+.fb-hd-l{display:flex;align-items:center;gap:.6rem;}
+.fb-av{width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;}
+.fb-nm{color:white;font-weight:700;font-size:.9rem;}
+.fb-st{color:rgba(255,255,255,.8);font-size:.67rem;display:flex;align-items:center;gap:.3rem;}
+.fb-dot{width:6px;height:6px;border-radius:50%;background:#4ade80;display:inline-block;}
+.fb-clr{background:rgba(255,255,255,.15);border:none;color:white;width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.fb-clr:hover{background:rgba(255,255,255,.28);}
+#fb-msgs{flex:1;overflow-y:auto;padding:.85rem;display:flex;flex-direction:column;gap:.55rem;max-height:300px;min-height:200px;scroll-behavior:smooth;}
+#fb-msgs::-webkit-scrollbar{width:3px;}
+#fb-msgs::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:99px;}
+.fm{display:flex;}
+.fm-b{justify-content:flex-start;}
+.fm-u{justify-content:flex-end;}
+.fb-bbl{max-width:83%;padding:.6rem .85rem;border-radius:13px;font-size:.855rem;line-height:1.6;}
+.fm-b .fb-bbl{background:var(--surface-alt);border:1px solid var(--border);color:var(--text-body);border-bottom-left-radius:4px;}
+.fm-u .fb-bbl{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:white;border-bottom-right-radius:4px;}
+.fb-typing{display:flex;align-items:center;gap:4px;padding:.45rem .85rem;}
+.fb-typing span{width:7px;height:7px;border-radius:50%;background:var(--text-muted);animation:fbt 1.2s infinite;}
+.fb-typing span:nth-child(2){animation-delay:.2s;}
+.fb-typing span:nth-child(3){animation-delay:.4s;}
+@keyframes fbt{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}
+#fb-sugg{padding:.45rem .7rem .2rem;display:flex;flex-wrap:wrap;gap:.35rem;}
+.fb-sg{background:var(--surface-alt);border:1px solid var(--border);border-radius:999px;padding:.28rem .7rem;font-size:.7rem;color:var(--text-muted);cursor:pointer;transition:all .15s;font-family:var(--font-body);}
+.fb-sg:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);}
+#fb-inp-w{display:flex;align-items:flex-end;gap:.45rem;padding:.65rem .85rem;border-top:1px solid var(--border);}
+#fb-inp{flex:1;resize:none;border:1.5px solid var(--border);border-radius:11px;padding:.5rem .75rem;font-family:var(--font-body);font-size:.855rem;background:var(--bg-alt,#f4f4f5);color:var(--text-body);outline:none;max-height:90px;line-height:1.5;transition:border-color .15s;}
+#fb-inp:focus{border-color:var(--accent);}
+#fb-inp::placeholder{color:var(--text-light);}
+#fb-send{width:36px;height:36px;border-radius:9px;flex-shrink:0;background:linear-gradient(135deg,var(--accent),var(--accent-2));border:none;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s,opacity .15s;}
+#fb-send:hover{transform:scale(1.08);}
+#fb-send:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+@media(max-width:480px){#fb-win{width:calc(100vw - 2rem);right:-.1rem;}}
+</style>
+
+<div id="fb-wrap">
+  <button id="fb-btn">
+    <svg id="fb-ico-open" width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.02 2 11c0 2.67 1.19 5.07 3.08 6.74L4 22l4.5-1.96C9.6 20.65 10.78 21 12 21c5.52 0 10-4.02 10-9S17.52 2 12 2z" fill="currentColor"/><circle cx="8.5" cy="11" r="1.2" fill="white"/><circle cx="12" cy="11" r="1.2" fill="white"/><circle cx="15.5" cy="11" r="1.2" fill="white"/></svg>
+    <svg id="fb-ico-close" style="display:none" width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M15 5L5 15M5 5l10 10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+    <span id="fb-pulse"></span>
+  </button>
+
+  <div id="fb-win">
+    <div class="fb-hd">
+      <div class="fb-hd-l">
+        <div class="fb-av"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.02 2 11c0 2.67 1.19 5.07 3.08 6.74L4 22l4.5-1.96C9.6 20.65 10.78 21 12 21c5.52 0 10-4.02 10-9S17.52 2 12 2z" fill="white"/></svg></div>
+        <div><div class="fb-nm">Fikrbot</div><div class="fb-st"><span class="fb-dot"></span> Onlayn</div></div>
+      </div>
+      <button class="fb-clr" id="fb-clr-btn" title="Tozalash"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+
+    <div id="fb-msgs">
+      <div class="fm fm-b"><div class="fb-bbl">Salom! Men <strong>Fikrbot</strong> 🌍<br>Hayot, ish, o'qish, oila — istalgan mavzuda yordam beraman!</div></div>
+    </div>
+
+    <div id="fb-sugg">
+      <button class="fb-sg">💼 Karyera maslahati</button>
+      <button class="fb-sg">📚 O'qish bo'yicha</button>
+      <button class="fb-sg">🌍 Hayot haqida</button>
+      <button class="fb-sg">👨‍👩‍👧 Oila munosabati</button>
+    </div>
+
+    <div id="fb-inp-w">
+      <textarea id="fb-inp" placeholder="Savolingizni yozing..." rows="1"></textarea>
+      <button id="fb-send"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var btn    = document.getElementById('fb-btn');
+  var win    = document.getElementById('fb-win');
+  var msgs   = document.getElementById('fb-msgs');
+  var inp    = document.getElementById('fb-inp');
+  var send   = document.getElementById('fb-send');
+  var sugg   = document.getElementById('fb-sugg');
+  var clrBtn = document.getElementById('fb-clr-btn');
+  var icoOpen  = document.getElementById('fb-ico-open');
+  var icoClose = document.getElementById('fb-ico-close');
+  var CSRF   = '{{ csrf_token }}';
+  var history = [];
+  var busy   = false;
+  var isOpen = false;
+
+  function toggle() {
+    isOpen = !isOpen;
+    if (isOpen) {
+      win.classList.add('fb-open');
+      icoOpen.style.display = 'none';
+      icoClose.style.display = 'flex';
+      inp.focus();
+    } else {
+      win.classList.remove('fb-open');
+      icoOpen.style.display = 'flex';
+      icoClose.style.display = 'none';
+    }
+  }
+
+  btn.addEventListener('click', function(e) { e.stopPropagation(); toggle(); });
+
+  // Close on outside click
+  document.addEventListener('click', function(e) {
+    if (isOpen && !document.getElementById('fb-wrap').contains(e.target)) {
+      toggle();
+    }
+  });
+
+  // Suggestions
+  sugg.querySelectorAll('.fb-sg').forEach(function(s) {
+    s.addEventListener('click', function() {
+      inp.value = s.textContent.trim();
+      sugg.style.display = 'none';
+      doSend();
+    });
+  });
+
+  // Clear
+  clrBtn.addEventListener('click', function() {
+    history = [];
+    msgs.innerHTML = '<div class="fm fm-b"><div class="fb-bbl">Suhbat tozalandi! Yangi savol bering 😊</div></div>';
+    sugg.style.display = 'flex';
+  });
+
+  // Auto resize
+  inp.addEventListener('input', function() {
+    inp.style.height = 'auto';
+    inp.style.height = Math.min(inp.scrollHeight, 90) + 'px';
+  });
+
+  inp.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(); }
+  });
+  send.addEventListener('click', doSend);
+
+  function addMsg(role, html) {
+    var d = document.createElement('div');
+    d.className = 'fm fm-' + (role === 'user' ? 'u' : 'b');
+    var b = document.createElement('div');
+    b.className = 'fb-bbl';
+    b.innerHTML = html;
+    d.appendChild(b);
+    msgs.appendChild(d);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function showTyping() {
+    var d = document.createElement('div');
+    d.className = 'fm fm-b'; d.id = 'fb-typ';
+    d.innerHTML = '<div class="fb-typing"><span></span><span></span><span></span></div>';
+    msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight;
+  }
+  function hideTyping() { var t = document.getElementById('fb-typ'); if(t) t.remove(); }
+
+  function doSend() {
+    var text = inp.value.trim();
+    if (!text || busy) return;
+    sugg.style.display = 'none';
+    inp.value = ''; inp.style.height = 'auto';
+    busy = true; send.disabled = true;
+    addMsg('user', text);
+    history.push({role:'user', content: text});
+    showTyping();
+
+    fetch('/api/chat/', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-CSRFToken': CSRF},
+      body: JSON.stringify({message: text, history: history.slice(-10)})
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      hideTyping();
+      var reply = data.reply || 'Xatolik yuz berdi, qayta urinib koring.';
+      var html = reply.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+      addMsg('bot', html);
+      history.push({role:'assistant', content: reply});
+      busy = false; send.disabled = false; inp.focus();
+    })
+    .catch(function() {
+      hideTyping();
+      addMsg('bot', 'Tarmoq xatosi. Internetni tekshiring.');
+      busy = false; send.disabled = false;
+    });
+  }
+});
+</script>
+
 </body>
 </html>
+

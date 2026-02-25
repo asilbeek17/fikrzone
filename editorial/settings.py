@@ -1,11 +1,12 @@
 from pathlib import Path
 import os
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 from decouple import config
-
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-this-in-production')
 DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost').split(',')
+GROQ_API_KEY = config('GROQ_API_KEY', default='')
 
 INSTALLED_APPS = [
     # Jazzmin must come before django.contrib.admin

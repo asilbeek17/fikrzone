@@ -343,9 +343,9 @@ def add_comment(request, slug):
     body = request.POST.get('body', '').strip()
     if name and body:
         Comment.objects.create(post=post, name=name, body=body)
-        messages.success(request, 'Your comment has been posted!')
+        messages.success(request, 'Sizning xabaringiz muvaffaqiyatli yuborildi!')
     else:
-        messages.error(request, 'Please fill in your name and comment.')
+        messages.error(request, 'Iltimos ism va xabarni kiriting.')
     return redirect('blog:post_detail', slug=slug)
 
 
@@ -371,3 +371,84 @@ def react(request, slug):
         active_emoji = emoji
 
     return JsonResponse({'active_emoji': active_emoji, 'counts': post.reaction_summary})
+
+
+# ── Fikrbot AI Chat (Groq) ──────────────────────────────────────────────────
+from django.views.decorators.csrf import csrf_exempt
+@csrf_exempt
+@require_POST
+def api_chat(request):
+    import json, urllib.request, urllib.error, ssl, re
+    from django.conf import settings
+
+    try:
+        body = json.loads(request.body)
+        user_message = body.get('message', '').strip()
+        history = body.get('history', [])
+    except Exception:
+        return JsonResponse({'error': 'Invalid request'}, status=400)
+
+    if not user_message:
+        return JsonResponse({'error': 'Empty message'}, status=400)
+
+    api_key = settings.GROQ_API_KEY
+    if not api_key:
+        return JsonResponse({'error': 'API key not configured'}, status=500)
+
+    # Fetch recent published posts for context
+    posts = Post.objects.filter(status='published').order_by('-created_at')[:8]
+    post_context = ""
+    for p in posts:
+        for b in p.blocks.filter(block_type='text')[:1]:
+            clean = re.sub(r'<[^>]+>', '', b.text_content or '')[:300]
+            post_context += f"- {p.title}: {clean}\n"
+
+    system_prompt = f"""Siz Fikrzone blogining AI yordamchisisiz — ismi Fikrbot.
+
+Fikrzone — hayot, ish, o'qish, oila va shaxsiy rivojlanish haqidagi shaxsiy blog.
+
+Vazifangiz:
+- Hayot, ish, o'qish, oila, munosabatlar bo'yicha aqlli va samimiy maslahat berish
+- Blog postlari haqida savollarga javob berish
+- O'zbek va ingliz tilida muloqot qilish (foydalanuvchi qaysi tilda yozsa, shu tilda javob bering)
+- Aqlli do'st kabi samimiy va professional bo'ling
+
+Blog postlari:
+{post_context}
+
+Qisqa, aniq va foydali javob bering."""
+
+    messages = [{"role": "system", "content": system_prompt}]
+    for msg in history[-10:]:
+        messages.append({"role": msg.get('role', 'user'), "content": msg.get('content', '')})
+    messages.append({"role": "user", "content": user_message})
+
+    payload = json.dumps({
+        "model": "llama-3.3-70b-versatile",
+        "messages": messages,
+        "temperature": 0.8,
+        "max_tokens": 1024,
+    }).encode('utf-8')
+
+    try:
+        import subprocess, json as json2
+        cmd = [
+            'curl', '-s', '-X', 'POST',
+            'https://api.groq.com/openai/v1/chat/completions',
+            '-H', 'Content-Type: application/json',
+            '-H', f'Authorization: Bearer {api_key}',
+            '-d', json.dumps({
+                "model": "llama-3.3-70b-versatile",
+                "messages": messages,
+                "temperature": 0.8,
+                "max_tokens": 1024,
+            })
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        data = json2.loads(result.stdout)
+        if 'error' in data:
+            return JsonResponse({'error': f'Groq error: {data["error"]["message"]}'}, status=500)
+        reply = data['choices'][0]['message']['content']
+        return JsonResponse({'reply': reply})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

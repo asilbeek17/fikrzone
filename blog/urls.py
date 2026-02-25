@@ -18,4 +18,5 @@ urlpatterns = [
     path('<slug:slug>/', views.post_detail, name='post_detail'),
     path('<slug:slug>/comment/', views.add_comment, name='add_comment'),
     path('<slug:slug>/react/', views.react, name='react'),
+    path('api/chat/', views.api_chat, name='api_chat'),
 ]
