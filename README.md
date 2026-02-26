@@ -1,4 +1,4 @@
-# Fikrzone 🌍📖
+# Asilbek Abdurahmonov 🌍📖
 
 > Fikrlar, mulohazalar va hayot haqida shaxsiy blog.
 

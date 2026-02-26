@@ -43,3 +43,10 @@ Thumbs.db
 
 # Secrets
 secret_key.txt
+
+# Deployment — never commit these
+.env
+.env.production
+nginx/.htpasswd_logs
+nginx/dhparam.pem
+.dozzle_creds

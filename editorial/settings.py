@@ -59,7 +59,9 @@ WSGI_APPLICATION = 'editorial.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        # DB_PATH allows container deployments to persist SQLite on a Docker volume.
+        # Defaults to the project root for local development.
+        'NAME': config('DB_PATH', default=str(BASE_DIR / 'db.sqlite3')),
     }
 }
 
@@ -254,3 +256,10 @@ JAZZMIN_UI_TWEAKS = {
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/write/'
 LOGOUT_REDIRECT_URL = '/'
+
+# ─── Production security (active when DEBUG=False) ────────────────────────────
+CSRF_TRUSTED_ORIGINS = [
+    o.strip() for o in
+    config('CSRF_TRUSTED_ORIGINS', default='').split(',')
+    if o.strip()
+]

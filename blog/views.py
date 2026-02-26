@@ -39,7 +39,7 @@ def home(request):
     return render(request, 'blog/home.html', {
         'page_obj': page_obj, 'all_tags': all_tags,
         'sidebar_posts': _sidebar_posts(),
-        'seo_title': 'Fikrzone — Shaxsiy Blog',
+        'seo_title': 'Asilbek Abdurahmonov — Shaxsiy Blog',
         'seo_description': 'Fikrlar va hayot haqida yozilgan maqolalar.',
     })
 
@@ -123,7 +123,7 @@ def search(request):
     return render(request, 'blog/search.html', {
         'q': q, 'results': results,
         'sidebar_posts': _sidebar_posts(),
-        'seo_title': f'Qidirish: {q} — Fikrzone' if q else 'Search — Editorial',
+        'seo_title': f'Qidirish: {q} — Asilbek Abdurahmonov' if q else 'Search — Asilbek Abdurahmonov',
     })
 
 
@@ -403,9 +403,9 @@ def api_chat(request):
             clean = re.sub(r'<[^>]+>', '', b.text_content or '')[:300]
             post_context += f"- {p.title}: {clean}\n"
 
-    system_prompt = f"""Siz Fikrzone blogining AI yordamchisisiz — ismi Fikrbot.
+    system_prompt = f"""Siz Asilbek Abdurahmonov blogining AI yordamchisisiz — ismi Fikrbot.
 
-Fikrzone — hayot, ish, o'qish, oila va shaxsiy rivojlanish haqidagi shaxsiy blog.
+Asilbek Abdurahmonov — hayot, ish, o'qish, oila va shaxsiy rivojlanish haqidagi shaxsiy blog.
 
 Vazifangiz:
 - Hayot, ish, o'qish, oila, munosabatlar bo'yicha aqlli va samimiy maslahat berish

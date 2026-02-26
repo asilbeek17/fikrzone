@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "🚀 Fikrzone — o'rnatish boshlandi..."
+echo "🚀 Asilbek Abdurahmonov — o'rnatish boshlandi..."
 
 # Virtual environment
 python3 -m venv venv

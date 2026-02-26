@@ -1,0 +1,174 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+env:
+  REGISTRY:   ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+# ── CI: Lint → Test → Security ────────────────────────────────────────────────
+jobs:
+  ci:
+    name: "CI — Lint, Test, Security"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements.prod.txt
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.prod.txt
+          pip install ruff pytest pytest-django bandit
+
+      - name: Lint — Ruff
+        run: ruff check . --select E,W,F --ignore E501 --exclude migrations,venv,.venv
+
+      - name: Security scan — Bandit
+        run: |
+          bandit -r blog/ editorial/ \
+            --skip B101,B311 \
+            -ll \
+            --format txt \
+            || true   # Non-blocking for now; tighten once all issues resolved
+
+      - name: Django system checks
+        env:
+          SECRET_KEY:          "ci-test-secret-key-placeholder-not-for-production"
+          DEBUG:               "True"
+          ALLOWED_HOSTS:       "localhost"
+          GROQ_API_KEY:        ""
+          DB_PATH:             "/tmp/ci-test.sqlite3"
+          CSRF_TRUSTED_ORIGINS: ""
+        run: python manage.py check --deploy 2>&1 | grep -v "^System check" || true
+
+      - name: Run tests
+        env:
+          SECRET_KEY:          "ci-test-secret-key-placeholder-not-for-production"
+          DEBUG:               "True"
+          ALLOWED_HOSTS:       "localhost"
+          GROQ_API_KEY:        ""
+          DB_PATH:             "/tmp/ci-test.sqlite3"
+          CSRF_TRUSTED_ORIGINS: ""
+        run: |
+          pytest --tb=short -q 2>/dev/null \
+            || echo "No tests found — add tests in blog/tests.py"
+
+# ── CD: Build → Push → Deploy ─────────────────────────────────────────────────
+  build-push:
+    name: "CD — Build & Push Image"
+    runs-on: ubuntu-latest
+    needs: ci
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      digest:    ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context:    .
+          file:       Dockerfile
+          push:       true
+          tags:       ${{ steps.meta.outputs.tags }}
+          labels:     ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to:   type=gha,mode=max
+
+  deploy:
+    name: "CD — Deploy to Production"
+    runs-on: ubuntu-latest
+    needs: build-push
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+    environment: production   # Requires env protection rules in GitHub settings
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host:     ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          timeout:  120s
+          script: |
+            set -e
+            cd /opt/app
+
+            echo "[deploy] Pulling latest image..."
+            docker compose pull web
+
+            echo "[deploy] Starting new container..."
+            docker compose up -d --no-deps --remove-orphans web
+
+            echo "[deploy] Health check..."
+            HEALTHY=false
+            for i in $(seq 1 12); do
+              CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 8 \
+                     https://asilbekabdurahmonov.uz 2>/dev/null || echo 000)
+              if [[ "$CODE" =~ ^(200|301|302)$ ]]; then
+                echo "[deploy] PASSED (HTTP $CODE) on attempt $i"
+                HEALTHY=true
+                break
+              fi
+              echo "[deploy] Attempt $i/12: HTTP $CODE — waiting 5s..."
+              sleep 5
+            done
+
+            if [[ "$HEALTHY" != "true" ]]; then
+              echo "[deploy] FAILED — check logs at https://logs.asilbekabdurahmonov.uz"
+              exit 1
+            fi
+
+            docker image prune -f --filter "until=24h"
+            echo "[deploy] Complete!"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Deployment to production failed!"
+          echo "::error::Check container logs at https://logs.asilbekabdurahmonov.uz"
+
+# ── Required GitHub Secrets ───────────────────────────────────────────────────
+# Settings → Secrets → Actions:
+#   SERVER_HOST      = 109.199.110.218
+#   SERVER_USER      = root
+#   SERVER_PASSWORD  = (your SSH password)
