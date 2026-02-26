@@ -1,12 +1,14 @@
 import json
 import os
+import re
+import subprocess
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST, require_http_methods
+from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required, user_passes_test
-from django.db.models import Q, Count, F
+from django.contrib.auth.decorators import user_passes_test
+from django.db.models import Q, Count
 from django.db import models
 from django.core.paginator import Paginator
 from django.contrib import messages
@@ -68,10 +70,10 @@ def post_detail(request, slug):
         pass
 
     reaction_data = sorted([{
-        'emoji': e, 'label': l,
+        'emoji': e, 'label': _label,
         'count': post.reaction_summary.get(e, 0),
         'active': user_reaction == e,
-    } for e, l in EMOJI_CHOICES], key=lambda x: x['count'], reverse=True)
+    } for e, _label in EMOJI_CHOICES], key=lambda x: x['count'], reverse=True)
 
     blocks   = post.blocks.all().order_by('position')
     try:
@@ -222,7 +224,8 @@ def api_save_post(request):
             slug = base
             n = 1
             while Post.objects.filter(slug=slug).exclude(pk=post.pk).exists():
-                slug = f"{base}-{n}"; n += 1
+                slug = f"{base}-{n}"
+                n += 1
             post.slug = slug
 
         post.save()
@@ -326,9 +329,12 @@ def api_upload_media(request):
 
     # If block exists update the field
     if block:
-        if field == 'image':  block.image = saved
-        elif field == 'video': block.video = saved
-        elif field == 'audio': block.audio = saved
+        if field == 'image':
+            block.image = saved
+        elif field == 'video':
+            block.video = saved
+        elif field == 'audio':
+            block.audio = saved
         block.save()
 
     return JsonResponse({'ok': True, 'url': url, 'path': saved})
@@ -363,9 +369,12 @@ def react(request, slug):
     try:
         existing = Reaction.objects.get(post=post, session_key=session_key)
         if existing.emoji == emoji:
-            existing.delete(); active_emoji = None
+            existing.delete()
+            active_emoji = None
         else:
-            existing.emoji = emoji; existing.save(); active_emoji = emoji
+            existing.emoji = emoji
+            existing.save()
+            active_emoji = emoji
     except Reaction.DoesNotExist:
         Reaction.objects.create(post=post, session_key=session_key, emoji=emoji)
         active_emoji = emoji
@@ -374,11 +383,9 @@ def react(request, slug):
 
 
 # ── Fikrbot AI Chat (Groq) ──────────────────────────────────────────────────
-from django.views.decorators.csrf import csrf_exempt
 @csrf_exempt
 @require_POST
 def api_chat(request):
-    import json, urllib.request, urllib.error, ssl, re
     from django.conf import settings
 
     try:
@@ -418,20 +425,12 @@ Blog postlari:
 
 Qisqa, aniq va foydali javob bering."""
 
-    messages = [{"role": "system", "content": system_prompt}]
+    chat_messages = [{"role": "system", "content": system_prompt}]
     for msg in history[-10:]:
-        messages.append({"role": msg.get('role', 'user'), "content": msg.get('content', '')})
-    messages.append({"role": "user", "content": user_message})
-
-    payload = json.dumps({
-        "model": "llama-3.3-70b-versatile",
-        "messages": messages,
-        "temperature": 0.8,
-        "max_tokens": 1024,
-    }).encode('utf-8')
+        chat_messages.append({"role": msg.get('role', 'user'), "content": msg.get('content', '')})
+    chat_messages.append({"role": "user", "content": user_message})
 
     try:
-        import subprocess, json as json2
         cmd = [
             'curl', '-s', '-X', 'POST',
             'https://api.groq.com/openai/v1/chat/completions',
@@ -439,13 +438,13 @@ Qisqa, aniq va foydali javob bering."""
             '-H', f'Authorization: Bearer {api_key}',
             '-d', json.dumps({
                 "model": "llama-3.3-70b-versatile",
-                "messages": messages,
+                "messages": chat_messages,
                 "temperature": 0.8,
                 "max_tokens": 1024,
             })
         ]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-        data = json2.loads(result.stdout)
+        data = json.loads(result.stdout)
         if 'error' in data:
             return JsonResponse({'error': f'Groq error: {data["error"]["message"]}'}, status=500)
         reply = data['choices'][0]['message']['content']

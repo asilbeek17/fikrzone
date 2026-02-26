@@ -1,8 +1,9 @@
 from pathlib import Path
 import os
 
-BASE_DIR = Path(__file__).resolve().parent.parent
 from decouple import config
+
+BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-this-in-production')
 DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost').split(',')
@@ -85,9 +86,8 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Ensure upload directories exist at startup
-import pathlib
 for d in ['media/covers', 'media/blocks/images', 'media/blocks/videos', 'media/blocks/audio']:
-    pathlib.Path(os.path.join(BASE_DIR, d)).mkdir(parents=True, exist_ok=True)
+    Path(os.path.join(BASE_DIR, d)).mkdir(parents=True, exist_ok=True)
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
